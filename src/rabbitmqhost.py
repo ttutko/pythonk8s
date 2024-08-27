@@ -3,6 +3,7 @@ import logging
 import time
 import pika
 import threading
+import json
 from pika.adapters.blocking_connection import BlockingConnection
 from pika.adapters.blocking_connection import BlockingChannel
 
@@ -29,15 +30,19 @@ class RabbitMQHost:
 
     def message_handler(self, ch, method, properties, body):
         self.logger.warning(f"Message received: {body}")
+        decoded_body = body.decode('utf-8')
+        messsage = json.loads(decoded_body)
+
+        if message['action'] == 'deploy':
+            pass
+
 
     def cleanup(self):
         self.connection.close()
-        time.sleep(45)
-        self.logger.info("DONE SLEEPING")
 
     def check_continue(self):
         if self.cancel_event and self.cancel_event.is_set():
-            self.logger.info("Cancelation requested, sleeping....")
+            # self.logger.info("Cancelation requested, sleeping....")
             self.connection.add_callback_threadsafe(self.cleanup)
             # self.channel.stop_consuming()
         else:
