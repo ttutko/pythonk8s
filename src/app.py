@@ -48,4 +48,4 @@ def get_pods():
     v1 = client.CoreV1Api()
     ret = v1.list_namespaced_pod(namespace=NAMESPACE, _preload_content=False)
 
-    return jsonify(ret)
+    return ret
