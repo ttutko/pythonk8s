@@ -62,6 +62,18 @@ class RabbitMQHost:
             return
 
         replicas = message['replicas']
+        env_vars = message['environmentVars']
+        container_env_vars: List[client.V1EnvVar] = []
+
+        for ev in env_vars or []:
+            k,v = ev.split("=", 1)
+            self.logger.info(f"Key: {k}, Value: {v}")
+            new_var = client.V1EnvVar(
+                name=k,
+                value=v
+            )
+            container_env_vars.append(new_var)
+
 
         config.load_kube_config()
         v1 = client.CoreV1Api()
@@ -71,7 +83,8 @@ class RabbitMQHost:
                 ports=[client.V1ContainerPort(container_port=80)],
                 resources=client.V1ResourceRequirements(
                     requests={"cpu":"100m", "memory":"200Mi"},
-                    limits={"cpu":"500m", "memory":"500Mi"})
+                    limits={"cpu":"500m", "memory":"500Mi"}),
+                env=container_env_vars
         )
         template = client.V1PodTemplateSpec(
                 metadata=client.V1ObjectMeta(labels={"app": "myclient"}),
