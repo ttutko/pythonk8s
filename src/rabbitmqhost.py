@@ -7,6 +7,7 @@ import json
 from pika.adapters.blocking_connection import BlockingConnection
 from pika.adapters.blocking_connection import BlockingChannel
 from kubernetes import client, config
+from jinja2 import FileSystemLoader, Environment, select_autoescape
 
 class RabbitMQHost:
     def __init__(self, cancel_event: threading.Event | None = None):
@@ -74,47 +75,62 @@ class RabbitMQHost:
             )
             container_env_vars.append(new_var)
 
-
-        config.load_kube_config()
-        v1 = client.CoreV1Api()
-        dep_container = client.V1Container(
-                name="nginx",
-                image=message['image'],
-                ports=[client.V1ContainerPort(container_port=80)],
-                resources=client.V1ResourceRequirements(
-                    requests={"cpu":"100m", "memory":"200Mi"},
-                    limits={"cpu":"500m", "memory":"500Mi"}),
-                env=container_env_vars
-        )
-        template = client.V1PodTemplateSpec(
-                metadata=client.V1ObjectMeta(labels={"app": "myclient"}),
-                spec = client.V1PodSpec(containers=[dep_container])
+        loader = FileSystemLoader("templates")
+        env = Environment(
+            loader=loader,
+            autoescape=select_autoescape()
         )
 
-        dep_spec=client.V1DeploymentSpec(
-                replicas=replicas,
-                template=template,
-                selector={
-                    "matchLabels": {"app":"myclient"}
-                }
-        )
-        deployment=client.V1Deployment(
-                api_version="apps/v1",
-                kind="Deployment",
-                metadata=client.V1ObjectMeta(name="my-deployment", namespace="dev"),
-                spec=dep_spec
-        )
+        template=env.get_template("plugintest.yml")
+        if template is None:
+            self.logger.info("Template not found!")
+        else:
+            self.logger.info("Template FOUND!")
+            data={"platformName": "myplatform"}
+            rendered_template = template.render(data)
+            self.logger.info(f"Rendered template: {rendered_template}")
 
-        namespace=client.V1Namespace()
-        namespace.metadata=client.V1ObjectMeta(name="dev")
-        v1.replace_namespace(name="dev", body=namespace)
-        apps_v1 = client.AppsV1Api()
-        resp = apps_v1.create_namespaced_deployment(
-                body=deployment,
-                namespace="dev"
-        )
 
-        self.logger.info(resp)
+        # config.load_kube_config()
+        # v1 = client.CoreV1Api()
+        # dep_container = client.V1Container(
+        #         name="nginx",
+        #         image=message['image'],
+        #         ports=[client.V1ContainerPort(container_port=80)],
+        #         resources=client.V1ResourceRequirements(
+        #             requests={"cpu":"100m", "memory":"200Mi"},
+        #             limits={"cpu":"500m", "memory":"500Mi"}),
+        #         env=container_env_vars
+        # )
+        # template = client.V1PodTemplateSpec(
+        #         metadata=client.V1ObjectMeta(labels={"app": "myclient"}),
+        #         spec = client.V1PodSpec(containers=[dep_container])
+        # )
+        #
+        # dep_spec=client.V1DeploymentSpec(
+        #         replicas=replicas,
+        #         template=template,
+        #         selector={
+        #             "matchLabels": {"app":"myclient"}
+        #         }
+        # )
+        # deployment=client.V1Deployment(
+        #         api_version="apps/v1",
+        #         kind="Deployment",
+        #         metadata=client.V1ObjectMeta(name="my-deployment", namespace="dev"),
+        #         spec=dep_spec
+        # )
+        #
+        # namespace=client.V1Namespace()
+        # namespace.metadata=client.V1ObjectMeta(name="dev")
+        # v1.replace_namespace(name="dev", body=namespace)
+        # apps_v1 = client.AppsV1Api()
+        # resp = apps_v1.create_namespaced_deployment(
+        #         body=deployment,
+        #         namespace="dev"
+        # )
+        #
+        # self.logger.info(resp)
 
 
 
