@@ -21,6 +21,11 @@ spec:
         ports:
         - containerPort: 80
           name: web
+        env:
+        {% for ev in env_vars -%}
+        - name: {{ ev.name }}
+          value: {{ ev.value }}
+        {% endfor %}
 ---
 apiVersion: v1
 kind: Service

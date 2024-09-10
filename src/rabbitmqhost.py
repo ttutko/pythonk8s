@@ -8,6 +8,7 @@ from pika.adapters.blocking_connection import BlockingConnection
 from pika.adapters.blocking_connection import BlockingChannel
 from kubernetes import client, config
 from jinja2 import FileSystemLoader, Environment, select_autoescape
+import pluginhost
 
 class RabbitMQHost:
     def __init__(self, cancel_event: threading.Event | None = None):
@@ -62,33 +63,16 @@ class RabbitMQHost:
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
-        replicas = message['replicas']
-        env_vars = message['environmentVars']
-        container_env_vars: List[client.V1EnvVar] = []
-
-        for ev in env_vars or []:
-            k,v = ev.split("=", 1)
-            self.logger.info(f"Key: {k}, Value: {v}")
-            new_var = client.V1EnvVar(
-                name=k,
-                value=v
-            )
-            container_env_vars.append(new_var)
-
-        loader = FileSystemLoader("templates")
-        env = Environment(
-            loader=loader,
-            autoescape=select_autoescape()
-        )
-
-        template=env.get_template("plugintest.yml")
-        if template is None:
-            self.logger.info("Template not found!")
+        if pluginhost.create_or_update_deployment(
+            message['name'],
+            "abc123",
+            message
+        ):
+            ch.basic_nack(delivery_tag=method.delivery_tag)
         else:
-            self.logger.info("Template FOUND!")
-            data={"platformName": "myplatform"}
-            rendered_template = template.render(data)
-            self.logger.info(f"Rendered template: {rendered_template}")
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+
+
 
 
         # config.load_kube_config()
