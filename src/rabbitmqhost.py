@@ -4,6 +4,7 @@ import time
 import pika
 import threading
 import json
+import functools
 from pika.adapters.blocking_connection import BlockingConnection
 from pika.adapters.blocking_connection import BlockingChannel
 from kubernetes import client, config
@@ -68,9 +69,17 @@ class RabbitMQHost:
             "abc123",
             message
         ):
-            ch.basic_nack(delivery_tag=method.delivery_tag)
+            self.connection.add_callback_threadsafe(functools.partial(ch.basic_ack, delivery_tag=method.delivery_tag))
         else:
-            ch.basic_ack(delivery_tag=method.delivery_tag)
+            self.connection.add_callback_threadsafe(functools.partial(ch.basic_nack, delivery_tag=method.delivery_tag))
+
+
+    def nack_message(self, message, ch, method):
+        ch.basic_nack(delivery_tag=method.delivery_tag)
+
+    def ack_message(self, message, ch, method):
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
 
 
 
