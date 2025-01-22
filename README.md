@@ -5,8 +5,8 @@
   "image": "nginx:stable",
   "name": "myplatform",
   "environmentVars": [
-    "myvar1=value1",
-    "myvar2=value2"
+    "myvar1=value100",
+    "myvar2=value200"
   ],
   "replicas": 4
 }
